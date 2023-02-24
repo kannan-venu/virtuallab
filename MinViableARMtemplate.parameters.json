@@ -1,0 +1,15 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "value": "kannan" 
+        },
+        "adminPassword": {
+            "value": "kannanPassword5*"
+        },
+        "sshPublicKey": {
+            "value": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCy00pOvmgGPxJooY++ScshVZrvGI8JTuhesosCISwABZWV1WFuzCjejNxGjuxT57VMiAAOcL+CnDE7u+jtgaxQpD8JC8vqHmUzrtFs09WsCQKy6r+0EHn9k1uLpu8XAbWl+s06DbYhOs18WwtqT5Qk7WpHP7IAEUHdIBaX/RElF/W3PgRD4mgUl9fd9WPHbyETif/aSr0SFoy0XyiZBfcyGOICEVdtugX4CDGzTUVhltsECJ82kUJLtESHk5mVLoIB/mJyROS9jyO1MCYzG0KwLDf1NeflNjQc1Mp7nYgFI64lZXhp0dWBowzl08ZaMRrMaW88lz2vPziJZ8qah9Lf rsa-key-20230223"
+        }
+    }
+}
