@@ -8,13 +8,6 @@
         "description": "Username for the Virtual Machine."
         }
       },
-      "adminPassword": {
-        "type": "securestring",
-        "minLength": 12,
-        "metadata": {
-           "description": "Password for the Virtual Machine. Password must have 3 of the following: 1 lower case character, 1 upper case character, 1 number, and 1 special character."
-        }
-      },
       "sshPublicKey": {
         "type": "securestring",
         "metadata": {
@@ -42,47 +35,81 @@
         "metadata": {
             "description": "SKU for the Public IP used to access the Virtual Machine."
         }
-      }
+      },
+      "vnetName": {
+        "type": "string"
+      },
+      "vnetAddressPrefix": {
+        "type": "string"
+      },
+      "subnetName": {
+        "type": "string"
+      },
+      "subnetAddressPrefix": {
+        "type": "string"
+      },
+      "vmCount": {
+        "type": "int",
+        "minValue": 1,
+        "defaultValue": 2
+      },
+      "vmNamePrefix": {
+        "type": "string",
+        "metadata": {
+            "description": "Prefix to use for VM names"
+        }
+      },
+      "osProfileName": {
+        "type": "string"
+      },
+      "nsgPrefix": {
+        "type": "string",
+        "metadata": {
+            "description": "Prefix to use for NSG names"
+        }
+      },
+      "nicNamePrefix": {
+        "type": "string",
+        "metadata": {
+            "description": "Prefix to use for network interface"
+        }
+      },
+      "publicIpPrefix": {
+        "type": "string",
+        "metadata": {
+            "description": "Prefix to use for Public IP"
+        }
+      },
+      "resourceTags": {
+        "type": "object"
+      }      
     },
     "resources": [
       {
         "type": "Microsoft.Network/virtualNetworks",
         "apiVersion": "2020-06-01",
-        "name": "Navp-AM-VSUb-VNET",
+        "name": "[parameters('vnetName')]",
         "location": "[resourceGroup().location]",
         "properties": {
           "addressSpace": {
-            "addressPrefixes": [
-              "10.55.0.0/16"
-            ]
+            "addressPrefixes": [ "[parameters('vnetAddressPrefix')]" ]
           },
           "subnets": [
             {
-              "name": "Navp-AM-VSUb-VNET-subnet",
+              "name": "[parameters('subnetName')]",
               "properties": {
-                "addressPrefix": "10.55.66.0/24"
+                "addressPrefix": "[parameters('subnetAddressPrefix')]"
               }
             }
           ]
         }
       },
       {
-        "type": "Microsoft.Network/publicIpAddresses",
-        "apiVersion": "2020-06-01",
-        "name": "navp-am-vs-pubip",
-        "location": "[resourceGroup().location]",
-        "sku": {
-            "name": "[parameters('publicIpSku')]"
-        },
-        "properties": {
-            "publicIPAllocationMethod": "[parameters('publicIPAllocationMethod')]"
-        }
-      },
-      {
         "type": "Microsoft.Network/networkSecurityGroups",
         "apiVersion": "2020-06-01",
-        "name": "navp-am-vs-Ub-Nsg",
+        "name": "[parameters('nsgPrefix')]",
         "location": "[resourceGroup().location]",
+        "tags": "[parameters('resourceTags')]",
         "properties": {
             "securityRules": [
             {
@@ -102,42 +129,65 @@
         }
       },
       {
+        "type": "Microsoft.Network/publicIpAddresses",
+        "apiVersion": "2020-06-01",
+        "name": "[concat(parameters('publicIpPrefix'),copyIndex(1))]",
+        "location": "[resourceGroup().location]",
+        "sku": {
+            "name": "[parameters('publicIpSku')]"
+        },
+        "tags": "[parameters('resourceTags')]",
+        "properties": {
+            "publicIPAllocationMethod": "[parameters('publicIPAllocationMethod')]"
+        },
+        "copy": {
+            "name": "publicipcopy",
+            "count": "[parameters('vmCount')]"
+        }
+      },
+      {
         "type": "Microsoft.Network/networkInterfaces",
         "apiVersion": "2020-06-01",
-        "name": "Navp-AM-VSUb-Nic",
+        "name": "[concat(parameters('nicNamePrefix'),copyIndex(1))]",
         "location": "[resourceGroup().location]",
-        "dependsOn": [
-          "[resourceId('Microsoft.Network/virtualNetworks/', 'Navp-AM-VSUb-VNET')]",
-          "[resourceId('Microsoft.Network/publicIpAddresses/', 'navp-am-vs-pubip')]",
-          "[resourceId('Microsoft.Network/networkSecurityGroups/', 'navp-am-vs-Ub-Nsg')]"
-        ],
+        "tags": "[parameters('resourceTags')]",
         "properties": {
           "ipConfigurations": [
             {
               "name": "myIpConfig",
               "properties": {
                 "subnet": {
-                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'Navp-AM-VSUb-VNET', 'Navp-AM-VSUb-VNET-subnet')]"
+                  "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', parameters('vnetName'), parameters('subnetName'))]"
                 },
                 "publicIpAddress": {
-                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', 'navp-am-vs-pubip')]"
+                  "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(parameters('publicIpPrefix'),copyIndex(1)))]"
                 }
               }
             }
           ],
           "networkSecurityGroup": {
-            "id": "[resourceId('Microsoft.Network/networkSecurityGroups', 'navp-am-vs-Ub-Nsg')]"
+            "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('nsgPrefix'))]"
           }
+        },
+        "dependsOn": [
+          "[resourceId('Microsoft.Network/virtualNetworks/', parameters('vnetName') )]",
+          "[resourceId('Microsoft.Network/networkSecurityGroups/', parameters('nsgPrefix'))]",
+          "[resourceId('Microsoft.Network/publicIpAddresses/', concat(parameters('publicIpPrefix'),copyIndex(1)))]"
+        ],
+        "copy": {
+            "name": "nicCopy",
+            "count": "[parameters('vmCount')]"
         }
       },
       {
         "type": "Microsoft.Compute/virtualMachines",
         "apiVersion": "2020-06-01",
-        "name": "Navp-AM-VSUb-VM",
+        "name": "[concat(parameters('vmNamePrefix'),copyIndex(1))]",
         "location": "[resourceGroup().location]",
         "dependsOn": [
-          "[resourceId('Microsoft.Network/networkInterfaces', 'Navp-AM-VSUb-Nic')]"
+          "nicCopy"
         ],
+        "tags": "[parameters('resourceTags')]",
         "properties": {
           "hardwareProfile": {
             "vmSize": "Standard_D2s_v3"
@@ -165,12 +215,12 @@
           "networkProfile": {
             "networkInterfaces": [
               {
-                "id": "[resourceId('Microsoft.Network/networkInterfaces', 'Navp-AM-VSUb-Nic')]"
+                "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('nicNamePrefix'),copyIndex(1)))]"
               }
             ]
           },
           "osProfile": {
-            "computerName": "Navp-AM-VSUb-VM",
+            "computerName": "[parameters('osProfileName')]",
             "adminUsername": "[parameters('adminUsername')]",
             "linuxConfiguration": {
                 "disablePasswordAuthentication": true,
@@ -184,6 +234,10 @@
                 }
             }
           }
+        },
+        "copy": {
+            "name": "vmCopy",
+            "count": "[parameters('vmCount')]"
         }
       }
     ]
